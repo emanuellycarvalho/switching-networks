@@ -13,7 +13,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-
 void usage() {
   printf("usage: %s <ipv4|ipv6> <port>\n", "server");
   printf("example: %s ipv4 50501\n", "server");
@@ -26,21 +25,20 @@ void logexit(const char *msg) {
 }
 
 double haversine(double lat1, double lon1, double lat2, double lon2) {
-    double dLat = (lat2 - lat1) * M_PI / 180.0;
-    double dLon = (lon2 - lon1) * M_PI / 180.0;
+  double dLat = (lat2 - lat1) * M_PI / 180.0;
+  double dLon = (lon2 - lon1) * M_PI / 180.0;
 
-    // convertendo para radianos
-    lat1 = (lat1) * M_PI / 180.0;
-    lat2 = (lat2) * M_PI / 180.0;
+  // convertendo para radianos
+  lat1 = (lat1) * M_PI / 180.0;
+  lat2 = (lat2) * M_PI / 180.0;
 
-    double a = pow(sin(dLat / 2), 2) +
-               pow(sin(dLon / 2), 2) *
-               cos(lat1) * cos(lat2);
-    double rad = 6371; // raio da Terra em quilômetros
-    double c = 2 * asin(sqrt(a));
-    return rad * c * 1000; // convertendo para metros
+  double a = pow(sin(dLat / 2), 2) +
+             pow(sin(dLon / 2), 2) *
+             cos(lat1) * cos(lat2);
+  double rad = 6371; // raio da Terra em quilômetros
+  double c = 2 * asin(sqrt(a));
+  return rad * c * 1000; // convertendo para metros
 }
-
 
 int main(int argc, char **argv) {
   if (argc < 3) {
@@ -82,9 +80,9 @@ int main(int argc, char **argv) {
   }
 
   system("clear");
-  printf("Aguardando solicitação (port %s)\n", argv[2]);
 
   while (true) {
+    printf("Aguardando solicitação (port %s)\n", argv[2]);
     int client_sock;
     struct sockaddr_in client_addr;
     socklen_t client_addrlen = sizeof(client_addr);
@@ -108,7 +106,7 @@ int main(int argc, char **argv) {
     printf("1) Aceitar\n");
     scanf("%d", &option);
 
-    while (option != 1 && option != 0){
+    while (option != 1 && option != 0) {
       system("clear");
       printf("Opção inválida!\n");
       printf("Nova corrida (%.2f metros)\n", distance);
@@ -132,19 +130,20 @@ int main(int argc, char **argv) {
 
       // Atualizar distância a cada 2 segundos até o motorista chegar
       while (distance > 0) {
+        sleep(2);
         distance -= 400;  // Decrementa 400m a cada iteração
         if (distance < 0) {
           distance = 0;
         }
-        
+
         sprintf(buf, "%.2f", distance);
         send(client_sock, buf, strlen(buf) + 1, 0);
-        if(distance == 0){
+        if (distance == 0) {
           // Motorista chegou
           printf("O motorista chegou!\n");
           close(client_sock);
+          break; // Sai do while interno
         }
-        sleep(2);
       }
     }
   }
