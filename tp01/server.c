@@ -81,7 +81,8 @@ int main(int argc, char **argv) {
     logexit("listen");
   }
 
-  printf("Server listening on port %s\n", argv[2]);
+  system("clear");
+  printf("Aguardando solicitação (port %s)\n", argv[2]);
 
   while (true) {
     int client_sock;
@@ -92,36 +93,60 @@ int main(int argc, char **argv) {
       logexit("accept");
     }
 
-    printf("Client connected\n");
-
     // Receber coordenadas do cliente
     double latitude, longitude;
     recv(client_sock, &latitude, sizeof(latitude), 0);
     recv(client_sock, &longitude, sizeof(longitude), 0);
 
-    // Calcular distância entre o cliente e o motorista
-    double distance = haversine(latitude, longitude, -19.9227, -43.9451);
+    // Calcular distância entre o cliente e o motorista (que está na UFMG)
+    double distance = haversine(latitude, longitude, -19.871904, -43.966248);
 
-    // Enviar distância inicial para o cliente
-    char buf[BUFSZ];
-    sprintf(buf, "%.2f", distance);
-    send(client_sock, buf, strlen(buf) + 1, 0);
+    int option;
+    system("clear");
+    printf("Nova corrida disponível (%.2f metros)\n", distance);
+    printf("0) Rejeitar\n");
+    printf("1) Aceitar\n");
+    scanf("%d", &option);
 
-    // Atualizar distância a cada 2 segundos até o motorista chegar
-    while (distance > 0) {
-      recv(client_sock, buf, BUFSZ, 0);
-      distance = atof(buf);
-      sprintf(buf, "%.2f", distance);
-      send(client_sock, buf, strlen(buf) + 1, 0);
-      sleep(2);
+    while (option != 1 && option != 0){
+      system("clear");
+      printf("Opção inválida!\n");
+      printf("Nova corrida (%.2f metros)\n", distance);
+      printf("0) Rejeitar\n");
+      printf("1) Aceitar\n");
+      scanf("%d", &option);
     }
 
-    // Motorista chegou
-    strcpy(buf, "O motorista chegou!");
-    send(client_sock, buf, strlen(buf) + 1, 0);
+    if (option == 0) {
+      // Nega a corrida
+      char buf[BUFSZ];
+      sprintf(buf, "%.2f", -1.0);
+      send(client_sock, buf, strlen(buf) + 1, 0);
+    }
 
-    close(client_sock);
-    printf("Client disconnected\n");
+    if (option == 1) {
+      // Enviar distância inicial para o cliente
+      char buf[BUFSZ];
+      sprintf(buf, "%.2f", distance);
+      send(client_sock, buf, strlen(buf) + 1, 0);
+
+      // Atualizar distância a cada 2 segundos até o motorista chegar
+      while (distance > 0) {
+        distance -= 400;  // Decrementa 400m a cada iteração
+        if (distance < 0) {
+          distance = 0;
+        }
+        
+        sprintf(buf, "%.2f", distance);
+        send(client_sock, buf, strlen(buf) + 1, 0);
+        if(distance == 0){
+          // Motorista chegou
+          printf("O motorista chegou!\n");
+          close(client_sock);
+        }
+        sleep(2);
+      }
+    }
   }
 
   close(s);

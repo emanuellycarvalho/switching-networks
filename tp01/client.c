@@ -23,53 +23,57 @@ int main(int argc, char **argv) {
     usage();
   }
 
-   system("./server ipv4 50502 &");
-
-  int s;
-  s = socket(argv[1][3] == '4' ? AF_INET : AF_INET6, SOCK_STREAM, 0);
-  if (s == -1) {
-    logexit("Socket");
-  }
-
-  struct sockaddr_in addr;
-  struct sockaddr_in6 addr6;
-  void *addrptr;
-  socklen_t addrlen;
-  if (argv[1][3] == '4') {
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(atoi(argv[3]));
-    inet_pton(AF_INET, argv[2], &addr.sin_addr);
-    addrptr = (struct sockaddr *)&addr;
-    addrlen = sizeof(addr);
-  } else {
-    memset(&addr6, 0, sizeof(addr6));
-    addr6.sin6_family = AF_INET6;
-    addr6.sin6_port = htons(atoi(argv[3]));
-    inet_pton(AF_INET6, argv[2], &addr6.sin6_addr);
-    addrptr = (struct sockaddr *)&addr6;
-    addrlen = sizeof(addr6);
-  }
-
-  if (connect(s, addrptr, addrlen) == -1) {
-    system("pkill -f './server ipv4 50502'");
-    logexit("Connect");
-  }
-
-  printf("Connected to server\n");
-
   // Menu inicial
   int option;
   do {
-    printf("Pressione 1 para sair ou 2 para buscar motorista: ");
+    printf("0) Sair\n");
+    printf("1) Buscar motorista\n");
     scanf("%d", &option);
-    if (option == 2) {
+    if (option == 1) {
+      // Conecta com o servidor
+      sleep(1);
+
+      int s;
+      s = socket(argv[1][3] == '4' ? AF_INET : AF_INET6, SOCK_STREAM, 0);
+      if (s == -1) {
+        logexit("Socket");
+      }
+
+      struct sockaddr_in addr;
+      struct sockaddr_in6 addr6;
+      void *addrptr;
+      socklen_t addrlen;
+      if (argv[1][3] == '4') {
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(atoi(argv[3]));
+        inet_pton(AF_INET, argv[2], &addr.sin_addr);
+        addrptr = (struct sockaddr *)&addr;
+        addrlen = sizeof(addr);
+      } else {
+        memset(&addr6, 0, sizeof(addr6));
+        addr6.sin6_family = AF_INET6;
+        addr6.sin6_port = htons(atoi(argv[3]));
+        inet_pton(AF_INET6, argv[2], &addr6.sin6_addr);
+        addrptr = (struct sockaddr *)&addr6;
+        addrlen = sizeof(addr6);
+      }
+
+      if (connect(s, addrptr, addrlen) == -1) {
+          logexit("Connect");
+      }
+
       // Envie suas coordenadas para o servidor
       double latitude, longitude;
-      printf("Informe sua latitude e longitude (exemplo: -19.9227 -43.9451): ");
+      printf("(Exemplo sugerido: -19.867688 -43.985187)");
+      printf("Informe sua latitude e longitude: ");
       scanf("%lf %lf", &latitude, &longitude);
       send(s, &latitude, sizeof(latitude), 0);
       send(s, &longitude, sizeof(longitude), 0);
+
+      system("clear");
+      printf("Buscando motorista...\n");
+      sleep(3);
 
       // Receber a distância inicial do servidor
       char buf[BUFSZ];
@@ -78,26 +82,31 @@ int main(int argc, char **argv) {
       if (count <= 0) {
         logexit("recv");
       }
-      printf("Distância inicial do motorista: %s metros\n", buf);
 
-      // Receber e exibir mensagens do servidor até o motorista chegar
-      while (1) {
-        memset(buf, 0, BUFSZ);
-        count = recv(s, buf, BUFSZ, 0);
-        if (count <= 0) {
-          break;
+      char *endptr;
+      double distance = strtod(buf, &endptr);
+
+      if(*endptr != '\0' || distance >= 0){
+        printf("Distância inicial do motorista: %s metros\n", buf);
+
+        // Receber e exibir mensagens do servidor até o motorista chegar
+        while (strcmp(buf, "0") != 0) {
+          memset(buf, 0, BUFSZ);
+          count = recv(s, buf, BUFSZ, 0);
+          if (count <= 0) {
+            break;
+          }
+          printf("O motorista está a %s metros\n", buf);
         }
-        printf("O motorista está a %s metros\n", buf);
-        if (strcmp(buf, "0") == 0) {
-          printf("O motorista chegou!\n");
-          break;
-        }
+
+        printf("O motorista chegou!\n");
+        close(s);
+        return 0;
+      } else {
+        printf("Não foi encontrado um motorista.\n");
       }
     }
-  } while (option != 1);
-
-  close(s);
-  system("pkill -f './server ipv4 50502'");
+  } while (option != 0);
 
   return 0;
 }
